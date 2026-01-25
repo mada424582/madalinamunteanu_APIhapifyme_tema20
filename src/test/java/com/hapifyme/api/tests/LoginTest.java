@@ -4,154 +4,130 @@ import com.hapifyme.api.models.*;
 import com.hapifyme.api.utils.DataGenerator;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import static com.hapifyme.api.utils.UserApiClient.BASE_URL;
-import static junit.framework.Assert.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.testng.Assert.assertTrue;
+
+import java.util.Map;
 
 public class LoginTest {
 
-    @Test (enabled = false)
-    public void loginAndGetProfileTest() {
+    @Test(enabled = false)
+    public void fullUserFlowTest() {
 
-        // Test data
-        String email = DataGenerator.randomEmail();
-        String password = "Accident2020!";
+        // 1 Generare date user
         String firstName = "John";
         String lastName = "Doe";
+        String email = DataGenerator.randomEmail();
+        String password = "Accident2020!";
+        String username = "user" + System.currentTimeMillis();
 
-        // Register
-        RegisterRequest registerRequest = new RegisterRequest(firstName, lastName, email, password);
+        // 2 Register
+        RegisterRequest registerRequest = new RegisterRequest(firstName, lastName, email, password, username);
 
         Response registerResponse = RestAssured
                 .given()
-                .log().all() // log request
                 .contentType("application/json")
                 .body(registerRequest)
                 .post(BASE_URL + "/user/register.php")
                 .then()
-                .log().all() // log response
                 .statusCode(201)
                 .extract()
                 .response();
 
         RegisterResponse regBody = registerResponse.as(RegisterResponse.class);
-        String confirmationToken = regBody.getConfirmation_token();
-        String username = regBody.getUsername();
-        String apiKey = regBody.getApi_key();
+        String apiKey = regBody.getApiKey();
+        String userId = regBody.getUserId();
+        System.out.println("API KEY DIN REGISTER = " + apiKey);
+        System.out.println("USER ID = " + userId);
 
-        // Confirm account
-        RestAssured
-                .given()
-                .log().all() // log request
-                .queryParam("token", confirmationToken)
-                .get(BASE_URL + "/user/confirm_email.php")
-                .then()
-                .log().all() // log response
-                .statusCode(200);
+        // Simulam că user-ul e confirmat
+        System.out.println("Simulating email confirmation... skipping retrieve_token.php");
 
-        // Login
+        // 5 Login
         LoginRequest loginRequest = new LoginRequest(username, password);
 
         Response loginResponse = RestAssured
                 .given()
-                .log().all() // log request
                 .contentType("application/json")
                 .body(loginRequest)
-                .when()
                 .post(BASE_URL + "/user/login.php")
                 .then()
-                .log().all() // log response
                 .statusCode(200)
                 .extract()
                 .response();
 
-        LoginResponse loginBody = loginResponse.as(LoginResponse.class);
-        String bearerToken = loginBody.getToken();
+        String bearerToken = loginResponse.as(LoginResponse.class).getToken();
+        Assert.assertNotNull(bearerToken, "Login token should exist");
 
-        // Assert token exists
-        assertNotNull(bearerToken, "Bearer token should not be null after login");
-
-        // Get user profile using API key
+        // 6 Get profile
         Response profileResponse = RestAssured
                 .given()
-                .log().all() // log request
-                .header("Authorization", apiKey) // folosește API Key-ul din register
-                .queryParam("user_id", regBody.getUser_id())
+                .queryParam("user_id", userId)
+                .queryParam("api_key", apiKey)
                 .get(BASE_URL + "/user/get_profile.php")
                 .then()
-                .log().all() // log response
                 .statusCode(200)
                 .extract()
                 .response();
 
         ProfileResponse profile = profileResponse.as(ProfileResponse.class);
+        Assert.assertEquals(profile.getUser().getEmail(), email);
+        Assert.assertEquals(profile.getUser().getFirstName(), firstName);
+        Assert.assertEquals(profile.getUser().getLastName(), lastName);
+        Assert.assertEquals(profile.getUser().getUsername(), username);
 
-        // Validate profile data
-        assertEquals(profile.getUser().getEmail(), email, "Email nu corespunde");
-        assertEquals(profile.getUser().getFirst_name(), firstName, "First name nu corespunde");
-        assertEquals(profile.getUser().getLast_name(), lastName, "Last name nu corespunde");
-        assertEquals(profile.getUser().getUsername(), username, "Username nu corespunde");
+        // 7 Update profile
+        String newFirstName = "Jane";
+        String newLastName = "Smith";
 
-        UpdateProfileRequest updateRequest =
-                new UpdateProfileRequest("Johnny", "DoeUpdated", regBody.getUser_id(), email);
-
-        Response updateResponse = RestAssured
+        RestAssured
                 .given()
-                .log().all()
+                .queryParam("user_id", userId)
+                .queryParam("api_key", apiKey)
                 .contentType("application/json")
-                .header("Authorization", apiKey)
-                .queryParam("user_id", regBody.getUser_id())
-                .body(updateRequest)
-                .when()
-                .put(BASE_URL + "/user/update_profile.php")
+                .body(Map.of(
+                        "first_name", newFirstName,
+                        "last_name", newLastName
+                ))
+                .post(BASE_URL + "/user/update_profile.php")
                 .then()
-                .log().all()
+                .statusCode(200);
+
+        // 8 Get updated profile
+        Response updatedProfileResponse = RestAssured
+                .given()
+                .queryParam("user_id", userId)
+                .queryParam("api_key", apiKey)
+                .get(BASE_URL + "/user/get_profile.php")
+                .then()
                 .statusCode(200)
                 .extract()
                 .response();
 
-        assertEquals(
-                "success",
-                updateResponse.jsonPath().getString("status"),
-                "Update profile should succeed"
-        );
+        ProfileResponse updatedProfile = updatedProfileResponse.as(ProfileResponse.class);
+        Assert.assertEquals(updatedProfile.getUser().getFirstName(), newFirstName);
+        Assert.assertEquals(updatedProfile.getUser().getLastName(), newLastName);
 
-        //DELETE
-        Response deleteResponse = RestAssured
+        // 9 Delete profile
+        RestAssured
                 .given()
-                .log().all()
-                .header("Authorization", "Bearer " + bearerToken)
-                .when()
+                .queryParam("user_id", userId)
+                .queryParam("api_key", apiKey)
                 .delete(BASE_URL + "/user/delete_profile.php")
                 .then()
-                .log().all()
-                .statusCode(200)  // verificăm că ștergerea a avut succes
-                .extract()
-                .response();
+                .statusCode(200);
 
-        Response profileAfterDelete = RestAssured
+        // 10 Negative check: profile should no longer exist
+        RestAssured
                 .given()
-                .log().all()
-                .header("Authorization", "Bearer " + bearerToken)
-                .queryParam("user_id", regBody.getUser_id())
-                .when()
+                .queryParam("user_id", userId)
+                .queryParam("api_key", apiKey)
                 .get(BASE_URL + "/user/get_profile.php")
                 .then()
-                .log().all()
-                .extract()
-                .response();
+                .statusCode(404);
 
-        // Negative assertion
-        int status = profileAfterDelete.getStatusCode();
-        assertEquals(401, status, "Profile should not be accessible after delete");
-
-        String errorMessage = profileAfterDelete.jsonPath().getString("message");
-        assertFalse(errorMessage.equals("Unauthorized") || errorMessage.equals("Invalid or inactive API key"));
-
-
+        System.out.println("Test finished successfully!");
     }
 }

@@ -1,31 +1,55 @@
 package com.hapifyme.api.models;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class UpdateProfileRequest {
-    private String first_name;
-    private String last_name;
-    private String user_id;
+
+    @JsonProperty("first_name")
+    private String firstName;
+
+    @JsonProperty("last_name")
+    private String lastName;
+
+    @JsonProperty("user_id")
+    private String userId;
+
+    @JsonProperty("email")
     private String email;
 
-    public String getFirst_name() {
-        return first_name;
+    // Constructor
+    public UpdateProfileRequest(String firstName, String lastName, String userId, String email) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.userId = userId;
+        this.email = email;
     }
 
-    public String getLast_name() {
-        return last_name;
+    // Getters & Setters
+    public String getFirstName() {
+        return firstName;
+    }
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
     }
 
-    public String getUser_id() {
-        return user_id;
+    public String getLastName() {
+        return lastName;
+    }
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+    public void setUserId(String userId) {
+        this.userId = userId;
     }
 
     public String getEmail() {
         return email;
     }
-
-    public UpdateProfileRequest (String first_name, String last_name, String user_id, String email) {
-        this.first_name = first_name;
-        this.last_name = last_name;
-        this.user_id = user_id;
+    public void setEmail(String email) {
         this.email = email;
     }
 }

@@ -1,33 +1,49 @@
 package com.hapifyme.api.models;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class RegisterRequest {
-    private String first_name;
-    private String last_name;
+
+    @JsonProperty("first_name")
+    private String firstName;
+
+    @JsonProperty("last_name")
+    private String lastName;
+
+    @JsonProperty("email")
     private String email;
+
+    @JsonProperty("password")
     private String password;
 
-    public RegisterRequest (String first_name, String last_name, String email, String password) {
-        this.first_name = first_name;
-        this.last_name = last_name;
+    @JsonProperty("username")
+    private String username;
+
+    public RegisterRequest(String firstName, String lastName, String email, String password, String username) {
+        this.firstName = firstName;
+        this.lastName = lastName;
         this.email = email;
         this.password = password;
-    }
-    public String getFirst_name() {
-        return first_name;
+        this.username = username;
     }
 
-    public void setFirst_name(String first_name) {
-        this.first_name = first_name;
+    // Getters & Setters
+
+    public String getFirstName() {
+        return firstName;
+    }
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
     }
 
-    public String getLast_name() {
-        return last_name;
+    public String getLastName() {
+        return lastName;
+    }
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
     }
 
-    public void setLast_name(String last_name) {
-        this.last_name = last_name;
-    }
-    public String getEmail(){
+    public String getEmail() {
         return email;
     }
     public void setEmail(String email) {
@@ -39,5 +55,12 @@ public class RegisterRequest {
     }
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+    public void setUsername(String username) {
+        this.username = username;
     }
 }

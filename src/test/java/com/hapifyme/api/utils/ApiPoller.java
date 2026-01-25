@@ -1,34 +1,37 @@
 package com.hapifyme.api.utils;
 
+import io.restassured.RestAssured;
 import io.restassured.response.Response;
 
-import static org.awaitility.Awaitility.await;
-import static java.util.concurrent.TimeUnit.SECONDS;
+import static com.hapifyme.api.utils.UserApiClient.BASE_URL;
 
 public class ApiPoller {
+    public static String waitForToken(String userId, int timeoutSeconds) {
+        long start = System.currentTimeMillis();
+        long timeout = timeoutSeconds * 1000L;
 
-    public static String waitForToken(
-            TokenSupplier supplier
-    ) {
-        final String[] tokenHolder = new String[1];
+        while (System.currentTimeMillis() - start < timeout) {
+            Response response = RestAssured
+                    .given()
+                    .queryParam("user_id", userId)
+                    .get(BASE_URL + "/user/retrieve_token.php")
+                    .then()
+                    .extract()
+                    .response();
 
-        await()
-                .atMost(15, SECONDS)
-                .pollInterval(2, SECONDS)
-                .until(() -> {
-                    String token = supplier.getToken();
-                    if (token != null && !token.isEmpty()) {
-                        tokenHolder[0] = token;
-                        return true;
-                    }
-                    return false;
-                });
+            String token = response.jsonPath().getString("confirmation_token");
+            if (token != null && !token.isEmpty()) {
+                return token;
+            }
 
-        return tokenHolder[0];
-    }
+            try {
+                Thread.sleep(1000); // așteaptă 1 sec înainte de retry
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(e);
+            }
+        }
 
-    @FunctionalInterface
-    public interface TokenSupplier {
-        String getToken();
+        throw new RuntimeException("Confirmation token not available within timeout");
     }
 }

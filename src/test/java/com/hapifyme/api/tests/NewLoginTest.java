@@ -1,14 +1,14 @@
 package com.hapifyme.api.tests;
 
 import com.hapifyme.api.models.*;
+import com.hapifyme.api.utils.ApiPoller;
 import com.hapifyme.api.utils.DataGenerator;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import static com.hapifyme.api.utils.UserApiClient.BASE_URL;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.testng.Assert.assertTrue;
 
 public class NewLoginTest {
@@ -21,8 +21,9 @@ public class NewLoginTest {
         String lastName = "Doe";
         String email = DataGenerator.randomEmail();
         String password = "Accident2020!";
+        String username = "user" + System.currentTimeMillis();
 
-        RegisterRequest registerRequest = new RegisterRequest(firstName, lastName, email, password);
+        RegisterRequest registerRequest = new RegisterRequest(firstName, lastName, email, password, username);
 
         Response registerResponse = RestAssured
                 .given()
@@ -37,12 +38,20 @@ public class NewLoginTest {
                 .response();
 
         RegisterResponse regBody = registerResponse.as(RegisterResponse.class);
-        String apiKey = regBody.getApi_key();
-        String userId = regBody.getUser_id();
+        String apiKey = regBody.getApiKey();
+        String userId = regBody.getUserId();
 
-        // Async check: poll for confirmation_token (simplificat)
-        String confirmationToken = regBody.getConfirmation_token();
-        assertNotNull(confirmationToken, "Confirmation token should exist");
+        // Async check: poll for confirmation_token
+        String confirmationToken;
+        try {
+            confirmationToken = ApiPoller.waitForToken(userId, 30); // așteaptă 30 sec
+        } catch (RuntimeException e) {
+            // fallback: ia token-ul direct din RegisterResponse
+            confirmationToken = regBody.getConfirmationToken();
+        }
+        Assert.assertNotNull(confirmationToken, "Confirmation token should exist");
+
+
 
         // Confirm account
         RestAssured
@@ -70,7 +79,7 @@ public class NewLoginTest {
                 .response();
 
         String bearerToken = loginResponse.as(LoginResponse.class).getToken();
-        assertNotNull(bearerToken, "Bearer token should not be null");
+        Assert.assertNotNull(bearerToken, "Bearer token should not be null");
 
         // Read & Validate: get profile
         Response profileResponse = RestAssured
@@ -86,10 +95,10 @@ public class NewLoginTest {
                 .response();
 
         ProfileResponse profile = profileResponse.as(ProfileResponse.class);
-        assertEquals(profile.getUser().getEmail(), email);
-        assertEquals(profile.getUser().getFirst_name(), firstName);
-        assertEquals(profile.getUser().getLast_name(), lastName);
-        assertEquals(profile.getUser().getUsername(), regBody.getUsername());
+        Assert.assertEquals(profile.getUser().getEmail(), email);
+        Assert.assertEquals(profile.getUser().getFirstName(), firstName);
+        Assert.assertEquals(profile.getUser().getLastName(), lastName);
+        Assert.assertEquals(profile.getUser().getUsername(), regBody.getUsername());
 
         // Update profile
         UpdateProfileRequest updateRequest = new UpdateProfileRequest("Johnny", "DoeUpdated", userId, email);
@@ -108,7 +117,7 @@ public class NewLoginTest {
                 .extract()
                 .response();
 
-        assertEquals("success", updateResponse.jsonPath().getString("status"));
+        Assert.assertEquals("success", updateResponse.jsonPath().getString("status"));
 
         // Delete profile
         RestAssured
@@ -141,4 +150,3 @@ public class NewLoginTest {
 
     }
 }
-

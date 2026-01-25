@@ -1,6 +1,7 @@
 package com.hapifyme.api.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ProfileResponse {
@@ -8,6 +9,7 @@ public class ProfileResponse {
     private String message;
     private User user; // wrapper pentru obiectul "user" din JSON
 
+    // Getters & Setters
     public String getStatus() {
         return status;
     }
@@ -29,14 +31,25 @@ public class ProfileResponse {
         this.user = user;
     }
 
+    // Clasa internă User
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class User {
+        @JsonProperty("email")
         private String email;
-        private String first_name;
-        private String last_name;
+
+        @JsonProperty("first_name")
+        private String firstName;
+
+        @JsonProperty("last_name")
+        private String lastName;
+
+        @JsonProperty("username")
         private String username;
+
+        @JsonProperty("id")
         private String user_id;
 
+        // Getters & Setters
         public String getEmail() {
             return email;
         }
@@ -44,18 +57,18 @@ public class ProfileResponse {
             this.email = email;
         }
 
-        public String getFirst_name() {
-            return first_name;
+        public String getFirstName() {
+            return firstName;
         }
-        public void setFirst_name(String first_name) {
-            this.first_name = first_name;
+        public void setFirstName(String firstName) {
+            this.firstName = firstName;
         }
 
-        public String getLast_name() {
-            return last_name;
+        public String getLastName() {
+            return lastName;
         }
-        public void setLast_name(String last_name) {
-            this.last_name = last_name;
+        public void setLastName(String lastName) {
+            this.lastName = lastName;
         }
 
         public String getUsername() {
